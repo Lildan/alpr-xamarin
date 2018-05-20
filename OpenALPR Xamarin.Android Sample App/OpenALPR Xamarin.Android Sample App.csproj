@@ -52,13 +52,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\OpenALPR Xamarin.Android Library\bin\Release\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenALPR Xamarin.Android Binding">
-      <HintPath>..\OpenALPR Xamarin.Android Library\bin\Release\OpenALPR Xamarin.Android Binding.dll</HintPath>
-    </Reference>
-    <Reference Include="OpenALPR Xamarin.Android Library">
-      <HintPath>..\OpenALPR Xamarin.Android Library\bin\Release\OpenALPR Xamarin.Android Library.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.10.0.3\lib\netstandard1.3\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -518,6 +512,16 @@
   </ItemGroup>
   <ItemGroup>
     <AndroidAsset Include="Assets\samples\eu3.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenALPR Xamarin.Android Binding\OpenALPR Xamarin.Android Binding.csproj">
+      <Project>{0e9527d8-53a4-4d87-a07a-ee79b5ecef0f}</Project>
+      <Name>OpenALPR Xamarin.Android Binding</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenALPR Xamarin.Android Library\OpenALPR Xamarin.Android Library.csproj">
+      <Project>{fcea05ee-df87-4ad3-b549-26c3a9c103ae}</Project>
+      <Name>OpenALPR Xamarin.Android Library</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
