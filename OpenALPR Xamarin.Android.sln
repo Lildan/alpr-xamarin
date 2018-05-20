@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenALPR Xamarin.Android Bi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenALPR Xamarin.Android Sample App", "OpenALPR Xamarin.Android Sample App\OpenALPR Xamarin.Android Sample App.csproj", "{61209B86-F3CB-402F-9D42-9ED76B0F8C30}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ALPRCamera.Droid", "ALPR.Camera\ALPRCamera.Droid.csproj", "{7AB960BF-C0FF-47C8-8B1D-6AB9B45C97A9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,6 +31,12 @@ Global
 		{61209B86-F3CB-402F-9D42-9ED76B0F8C30}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{61209B86-F3CB-402F-9D42-9ED76B0F8C30}.Release|Any CPU.Build.0 = Release|Any CPU
 		{61209B86-F3CB-402F-9D42-9ED76B0F8C30}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{7AB960BF-C0FF-47C8-8B1D-6AB9B45C97A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7AB960BF-C0FF-47C8-8B1D-6AB9B45C97A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7AB960BF-C0FF-47C8-8B1D-6AB9B45C97A9}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{7AB960BF-C0FF-47C8-8B1D-6AB9B45C97A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7AB960BF-C0FF-47C8-8B1D-6AB9B45C97A9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7AB960BF-C0FF-47C8-8B1D-6AB9B45C97A9}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
