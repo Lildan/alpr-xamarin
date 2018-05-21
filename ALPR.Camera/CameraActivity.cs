@@ -9,7 +9,7 @@ using Android.OS;
 
 namespace ALPRCamera.Droid
 {
-	[Activity (Label = "Camera2Basic", MainLauncher = true, Icon = "@drawable/icon")]
+	[Activity (Label = "ALPRCamera.Droid", MainLauncher = true, Icon = "@drawable/icon")]
 	public class CameraActivity : Activity
 	{
 		protected override void OnCreate (Bundle bundle)
