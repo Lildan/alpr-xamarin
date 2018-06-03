@@ -740,7 +740,7 @@ namespace ALPRCamera.Droid
                 if (activity != null)
                 {
                     new AlertDialog.Builder(activity)
-                        .SetMessage("This sample demonstrates the basic use of the Camera2 API. ...")
+                        .SetMessage("This programm demonstrates the application of neural networks for license plates recognition.")
                         .SetPositiveButton(Android.Resource.String.Ok, nullHandler)
                         .Show();
                 }
