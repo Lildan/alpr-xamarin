@@ -22,6 +22,11 @@ using Java.Util.Concurrent;
 using Boolean = Java.Lang.Boolean;
 using Math = Java.Lang.Math;
 using Orientation = Android.Content.Res.Orientation;
+using System.Threading.Tasks;
+using System.Threading;
+using OpenALPR_Xamarin.Android_Library;
+using Android.Content.Res;
+using System.IO;
 
 namespace ALPRCamera.Droid
 {
@@ -30,6 +35,10 @@ namespace ALPRCamera.Droid
         private static readonly SparseIntArray ORIENTATIONS = new SparseIntArray();
         public static readonly int REQUEST_CAMERA_PERMISSION = 1;
         private static readonly string FRAGMENT_DIALOG = "dialog";
+
+        internal ApplicationInfo applicationInfo;
+        internal string OpenALPRConfigFile;
+        internal string OpenALPRRuntimeFolder;
 
         // Tag for the {@link Log}.
         private static readonly string TAG = "Camera2BasicFragment";
@@ -86,7 +95,7 @@ namespace ALPRCamera.Droid
         private ImageReader mImageReader;
 
         // This is the output file for our picture.
-        public File mFile;
+        public Java.IO.File mFile;
 
         // This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
         // still image is ready to be saved.
@@ -102,7 +111,7 @@ namespace ALPRCamera.Droid
         public int mState = STATE_PREVIEW;
 
         // A {@link Semaphore} to prevent the app from exiting before closing the camera.
-        public Semaphore mCameraOpenCloseLock = new Semaphore(1);
+        public Java.Util.Concurrent.Semaphore mCameraOpenCloseLock = new Java.Util.Concurrent.Semaphore(1);
 
         // Whether the current camera device supports Flash or not.
         private bool mFlashSupported;
@@ -112,6 +121,15 @@ namespace ALPRCamera.Droid
 
         // A {@link CameraCaptureSession.CaptureCallback} that handles events related to JPEG capture.
         public CameraCaptureListener mCaptureCallback;
+
+        const int ACTIVE = 1;
+        const int NOTACTIVE = 0;
+
+        internal int sessionIsActive = NOTACTIVE;
+        internal Task sessionTask;
+        internal CancellationToken cancelToken;
+
+        internal OpenALPR OpenALPRInstance;
 
         // Shows a {@link Toast} on the UI thread.
         public void ShowToast(string text)
@@ -192,8 +210,29 @@ namespace ALPRCamera.Droid
         public override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+
+            AssetManager assets = Activity.Assets;
+            var filesToCopy = new string[] { "runtime_data/openalpr.conf"
+                                            , "runtime_data/region/eu.xml"
+                                           };
+
+            var AndroidDataDir = Android.App.Application.Context.DataDir.AbsolutePath;
+            var runtimeFolder = new Java.IO.File(AndroidDataDir, "/files/runtime_data");
+            var renamedRuntimeFolder = new Java.IO.File(AndroidDataDir, "runtime_data");
+            runtimeFolder.RenameTo(renamedRuntimeFolder);
+
+            var list = renamedRuntimeFolder.List();
+
+            OpenALPRConfigFile = AndroidDataDir + "/runtime_data/openalpr.conf";
+
+            var f = new Java.IO.File(AndroidDataDir);
+            var flist = f.List();
+            var lib = new Java.IO.File(f, "lib");
+            var liblist = lib.List();
+
             mStateCallback = new CameraStateListener(this);
             mSurfaceTextureListener = new Camera2BasicSurfaceTextureListener(this);
+            OpenALPRInstance = new OpenALPR(this.Activity, AndroidDataDir, OpenALPRConfigFile, "eu", "ua");
 
             // fill ORIENTATIONS list
             ORIENTATIONS.Append((int)SurfaceOrientation.Rotation0, 90);
@@ -217,7 +256,7 @@ namespace ALPRCamera.Droid
         public override void OnActivityCreated(Bundle savedInstanceState)
         {
             base.OnActivityCreated(savedInstanceState);
-            mFile = new File(Activity.GetExternalFilesDir(null), "pic.jpg");
+            mFile = new Java.IO.File(Activity.GetExternalFilesDir(null), "pic.jpg");
             mCaptureCallback = new CameraCaptureListener(this);
             mOnImageAvailableListener = new ImageAvailableListener(this, mFile);
         }
@@ -243,6 +282,7 @@ namespace ALPRCamera.Droid
 
         public override void OnPause()
         {
+            StopCaptureSession();
             CloseCamera();
             StopBackgroundThread();
             base.OnPause();
@@ -464,6 +504,14 @@ namespace ALPRCamera.Droid
             }
         }
 
+        public void SetAutoFlash(CaptureRequest.Builder requestBuilder)
+        {
+            if (mFlashSupported)
+            {
+                requestBuilder.Set(CaptureRequest.ControlAeMode, (int)ControlAEMode.OnAutoFlash);
+            }
+        }
+
         // Starts a background thread and its {@link Handler}.
         private void StartBackgroundThread()
         {
@@ -573,7 +621,6 @@ namespace ALPRCamera.Droid
             try
             {
                 // This is how to tell the camera to lock focus.
-
                 mPreviewRequestBuilder.Set(CaptureRequest.ControlAfTrigger, (int)ControlAFTrigger.Start);
                 // Tell #mCaptureCallback to wait for the lock.
                 mState = STATE_WAITING_LOCK;
@@ -618,7 +665,7 @@ namespace ALPRCamera.Droid
                     return;
                 }
                 // This is the CaptureRequest.Builder that we use to take a picture.
-                if(stillCaptureBuilder == null)
+                if (stillCaptureBuilder == null)
                     stillCaptureBuilder = mCameraDevice.CreateCaptureRequest(CameraTemplate.StillCapture);
 
                 stillCaptureBuilder.AddTarget(mImageReader.Surface);
@@ -676,7 +723,14 @@ namespace ALPRCamera.Droid
         {
             if (v.Id == Resource.Id.picture)
             {
-                TakePicture();
+                if (Interlocked.CompareExchange(ref sessionIsActive, ACTIVE, NOTACTIVE) == NOTACTIVE)
+                {
+                    StartCaptureSession();
+                }
+                else
+                {
+                    StopCaptureSession();
+                }
             }
             else if (v.Id == Resource.Id.info)
             {
@@ -693,12 +747,91 @@ namespace ALPRCamera.Droid
             }
         }
 
-        public void SetAutoFlash(CaptureRequest.Builder requestBuilder)
+        private void StartCaptureSession()
         {
-            if (mFlashSupported)
+            sessionTask = Task.Factory.StartNew(async () =>
             {
-                requestBuilder.Set(CaptureRequest.ControlAeMode, (int)ControlAEMode.OnAutoFlash);
+                while (Interlocked.CompareExchange(ref sessionIsActive, ACTIVE, ACTIVE) == ACTIVE)
+                {
+                    var imageBytes = await TakePhoto();
+                    var file = SavePhoto(imageBytes);
+
+                    var results = OpenALPRInstance.Recognize(file.AbsolutePath, 10);
+                    string output = "";
+
+                    if (results.DidErrorOccur == false)
+                    {
+                        foreach (var rr in results.FoundLicensePlates)
+                        {
+                            output += "Best: " + rr.BestLicensePlate + "(" + rr.Confidence + "%)\n";
+
+                            ShowToast(output);
+                        }
+                    }
+
+                    var delete = true;
+                    if (delete)
+                    {
+                        System.IO.File.Delete(file.AbsolutePath);
+                    }
+                }
+            });
+        }
+
+        private void StopCaptureSession()
+        {
+            Interlocked.Exchange(ref sessionIsActive, NOTACTIVE);
+        }
+
+        public async Task<byte[]> TakePhoto()
+        {
+            try
+            {
+                var ratio = ((decimal)mPreviewSize.Height) / mPreviewSize.Width;
+                var image = Bitmap.CreateBitmap(mTextureView.Bitmap, 0, 0, mTextureView.Bitmap.Width, (int)(mTextureView.Bitmap.Width * ratio));
+                byte[] imageBytes = null;
+
+
+                using (var imageStream = new System.IO.MemoryStream())
+                {
+
+                    var success = image.Compress(Bitmap.CompressFormat.Jpeg, 100, imageStream);
+                    image.Recycle();
+                    imageBytes = imageStream.ToArray();
+
+                    return imageBytes;
+                }
             }
+            catch (System.Exception exc)
+            {
+                return null;
+            }
+        }
+
+        private Java.IO.File SavePhoto(byte[] imageBytes)
+        {
+            var file = new Java.IO.File(Activity.GetExternalFilesDir(null),
+                DateTime.Now.ToString("h:mm:ss") + Guid.NewGuid().ToString() + ".jpg");
+
+            using (var output = new FileOutputStream(file))
+            {
+                try
+                {
+                    output.Write(imageBytes);
+                    output.Close();
+                }
+                catch (Java.IO.IOException e)
+                {
+                    e.PrintStackTrace();
+                    return null;
+                }
+                catch (System.Exception e)
+                {
+                    return null;
+                }
+            }
+
+            return file;
         }
     }
 }
