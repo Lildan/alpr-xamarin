@@ -73,6 +73,8 @@ namespace ALPRCamera.Droid
         // An AutoFitTextureView for camera preview
         private AutoFitTextureView mTextureView;
 
+        private View view;
+
         // A {@link CameraCaptureSession } for camera preview.
         public CameraCaptureSession mCaptureSession;
 
@@ -251,6 +253,7 @@ namespace ALPRCamera.Droid
             mTextureView = (AutoFitTextureView)view.FindViewById(Resource.Id.texture);
             view.FindViewById(Resource.Id.picture).SetOnClickListener(this);
             view.FindViewById(Resource.Id.info).SetOnClickListener(this);
+            this.view = view;
         }
 
         public override void OnActivityCreated(Bundle savedInstanceState)
@@ -283,6 +286,7 @@ namespace ALPRCamera.Droid
         public override void OnPause()
         {
             StopCaptureSession();
+            (this.view.FindViewById(Resource.Id.picture) as Button).Text = "Start session";
             CloseCamera();
             StopBackgroundThread();
             base.OnPause();
@@ -725,10 +729,14 @@ namespace ALPRCamera.Droid
             {
                 if (Interlocked.CompareExchange(ref sessionIsActive, ACTIVE, NOTACTIVE) == NOTACTIVE)
                 {
+                    var button = v as Button;
+                    button.Text = "Stop session";
                     StartCaptureSession();
                 }
                 else
                 {
+                    var button = v as Button;
+                    button.Text = "Start session";
                     StopCaptureSession();
                 }
             }
